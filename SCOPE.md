@@ -1,4 +1,4 @@
-# tf-mod-aws-iam-identity-provider — SCOPE
+# terraform-aws-iam-identity-provider — SCOPE
 
 Composite module for account-level IAM identity providers used to federate
 external identities into AWS without long-lived credentials. It owns the OIDC
@@ -25,7 +25,7 @@ The module manages **all** of the following (allow-list):
 Referenced by `arn`, never created here:
 
 - IAM roles that trust this provider (their `assume_role_policy` names the provider
-  ARN) — created by `tf-mod-aws-iam-role`
+  ARN) — created by `terraform-aws-iam-role`
 - The external IdP itself (the OIDC issuer / SAML IdP) — operated outside AWS
 
 ## Consumes
@@ -35,7 +35,7 @@ Referenced by `arn`, never created here:
 | (none — foundation provider) | — | — |
 
 > **None — foundation module.** It consumes no sibling outputs; it *emits* provider
-> ARNs that `tf-mod-aws-iam-role` trust policies consume.
+> ARNs that `terraform-aws-iam-role` trust policies consume.
 
 ## Required IAM permissions
 
@@ -66,8 +66,8 @@ Referenced by `arn`, never created here:
 | Output | Description | Consumed by |
 |---|---|---|
 | `id` | OIDC provider ARN (the resource id) | references |
-| `arn` | OIDC provider ARN (`arn:aws:iam::<account>:oidc-provider/<issuer-host>`) — cross-resource reference type | `tf-mod-aws-iam-role` trust policies (web-identity) |
-| `saml_provider_arn` | SAML provider ARN (when created) — cross-resource reference type | `tf-mod-aws-iam-role` trust policies (SAML) |
+| `arn` | OIDC provider ARN (`arn:aws:iam::<account>:oidc-provider/<issuer-host>`) — cross-resource reference type | `terraform-aws-iam-role` trust policies (web-identity) |
+| `saml_provider_arn` | SAML provider ARN (when created) — cross-resource reference type | `terraform-aws-iam-role` trust policies (SAML) |
 | `tags_all` | All tags incl. provider `default_tags` | governance/audit |
 
 ## Provider gotchas
@@ -81,7 +81,7 @@ Referenced by `arn`, never created here:
   CA, plan will show drift; current AWS validates major OIDC IdPs against trusted CAs,
   but pin deliberately. Document rotation in the README.
 - **Order of operations.** Create the provider here, then create the trusting role in
-  `tf-mod-aws-iam-role` referencing this `arn` — do not bake the role's trust into this module.
+  `terraform-aws-iam-role` referencing this `arn` — do not bake the role's trust into this module.
 - **`tags` vs `tags_all`.** `var.tags` flows to both providers; `tags_all` is the
   computed merge over provider `default_tags` (resource tags win). `default_tags` is
   the caller's concern.
@@ -103,7 +103,7 @@ Referenced by `arn`, never created here:
 
 - One composite co-owns the OIDC and SAML providers because they are sibling
   account-level federation primitives, each independently optional.
-- **Role trust is out of scope** — federated roles live in `tf-mod-aws-iam-role` and
+- **Role trust is out of scope** — federated roles live in `terraform-aws-iam-role` and
   reference this module's provider ARN, keeping the federation primitive decoupled
   from the roles that consume it.
 - No `region` variable — IAM is global.

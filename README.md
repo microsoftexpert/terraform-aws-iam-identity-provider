@@ -38,13 +38,13 @@ Whether it's a star, a professional connection, or a coffee, every gesture helps
 
 ## 🗺️ Where this fits in the family
 
-`tf-mod-aws-iam-identity-provider` is a **foundation module** — it consumes nothing from siblings, and it *emits* provider ARNs that `tf-mod-aws-iam-role` trust policies consume. It is the trust anchor that turns an external IdP into an assumable AWS identity.
+`terraform-aws-iam-identity-provider` is a **foundation module** — it consumes nothing from siblings, and it *emits* provider ARNs that `terraform-aws-iam-role` trust policies consume. It is the trust anchor that turns an external IdP into an assumable AWS identity.
 
 ```mermaid
 flowchart LR
- idp["tf-mod-aws-iam-identity-provider<br/>OIDC / SAML"]
- role["tf-mod-aws-iam-role"]
- policy["tf-mod-aws-iam-policy"]
+ idp["terraform-aws-iam-identity-provider<br/>OIDC / SAML"]
+ role["terraform-aws-iam-role"]
+ policy["terraform-aws-iam-policy"]
  gha["GitHub Actions / Azure DevOps<br/>(OIDC issuer)"]
  okta["Okta / Entra ID / ADFS<br/>(SAML IdP)"]
  svc["EC2 / ECS / EKS / RDS / Config<br/>(consume the role)"]
@@ -64,7 +64,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
- subgraph mod["tf-mod-aws-iam-identity-provider"]
+ subgraph mod["terraform-aws-iam-identity-provider"]
  oidc["aws_iam_openid_connect_provider.this<br/>(keystone)<br/>issuer url + client_id_list + thumbprints"]
  saml["aws_iam_saml_provider.saml<br/>(optional sibling)<br/>SAML 2.0 metadata document"]
  end
@@ -108,7 +108,7 @@ Least-privilege actions the **Terraform execution identity** needs to manage thi
 | `iam:TagOpenIDConnectProvider`, `iam:UntagOpenIDConnectProvider` | OIDC tagging | Plus `iam:ListOpenIDConnectProviderTags` for read |
 | `iam:TagSAMLProvider`, `iam:UntagSAMLProvider` | SAML tagging | Plus `iam:ListSAMLProviderTags` for read |
 
-> ⚠️ **`iam:PassRole` is NOT a module permission.** Role trust is out of scope here — federated roles live in `tf-mod-aws-iam-role` and reference this module's provider ARN. No service-linked role and no `iam:CreateServiceLinkedRole` are involved.
+> ⚠️ **`iam:PassRole` is NOT a module permission.** Role trust is out of scope here — federated roles live in `terraform-aws-iam-role` and reference this module's provider ARN. No service-linked role and no `iam:CreateServiceLinkedRole` are involved.
 
 > 🔒 Scope these actions to the provider ARN pattern (`arn:aws:iam::<account>:oidc-provider/*`, `arn:aws:iam::<account>:saml-provider/*`) so the deploy identity can only manage federation primitives, not roles.
 
@@ -130,7 +130,7 @@ Least-privilege actions the **Terraform execution identity** needs to manage thi
 ## 📁 Module Structure
 
 ```
-tf-mod-aws-iam-identity-provider/
+terraform-aws-iam-identity-provider/
 ├── providers.tf # required_providers (aws >= 6.0, < 7.0); no provider block
 ├── variables.tf # oidc → saml → tags (each provider independently optional)
 ├── main.tf # aws_iam_openid_connect_provider.this + aws_iam_saml_provider.saml
@@ -147,7 +147,7 @@ Smallest working call — a GitHub Actions OIDC provider for keyless CI/CD:
 
 ```hcl
 module "github_oidc" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
 
   oidc = {
     url            = "https://token.actions.githubusercontent.com"
@@ -160,7 +160,7 @@ module "github_oidc" {
   }
 }
 
-# Wire module.github_oidc.arn into a tf-mod-aws-iam-role assume_role_policy (see Example 9).
+# Wire module.github_oidc.arn into a terraform-aws-iam-role assume_role_policy (see Example 9).
 ```
 
 ---
@@ -180,11 +180,11 @@ module "github_oidc" {
 | Output | Description | Consumed by |
 |---|---|---|
 | `id` | OIDC provider id (its ARN); `null` when no `oidc` object | references / CLI |
-| `arn` | OIDC provider ARN `arn:aws:iam::<account>:oidc-provider/<issuer-host>` — the cross-resource reference type; `null` when no `oidc` object | `tf-mod-aws-iam-role` web-identity trust policies |
+| `arn` | OIDC provider ARN `arn:aws:iam::<account>:oidc-provider/<issuer-host>` — the cross-resource reference type; `null` when no `oidc` object | `terraform-aws-iam-role` web-identity trust policies |
 | `oidc_url` | OIDC issuer URL | audit / wiring |
 | `oidc_client_id_list` | Registered audiences (`aud`) | audit |
 | `oidc_thumbprint_list` | Server-cert thumbprints (auto-retrieved when not pinned) | audit |
-| `saml_provider_arn` | SAML provider ARN `arn:aws:iam::<account>:saml-provider/<name>`; `null` when no `saml` object | `tf-mod-aws-iam-role` SAML trust policies |
+| `saml_provider_arn` | SAML provider ARN `arn:aws:iam::<account>:saml-provider/<name>`; `null` when no `saml` object | `terraform-aws-iam-role` SAML trust policies |
 | `saml_provider_id` | SAML provider id (its ARN); `null` when no `saml` object | references |
 | `saml_provider_name` | SAML provider name; `null` when no `saml` object | audit |
 | `saml_provider_valid_until` | SAML metadata expiry (RFC1123); `null` when no `saml` object | rotation monitoring |
@@ -200,7 +200,7 @@ module "github_oidc" {
 
 ```hcl
 module "github_oidc" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
 
   oidc = {
     url            = "https://token.actions.githubusercontent.com"
@@ -215,7 +215,7 @@ module "github_oidc" {
 
 ```hcl
 module "ado_oidc" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
 
   oidc = {
     url            = "https://vstoken.dev.azure.com/<org-id>"
@@ -230,7 +230,7 @@ module "ado_oidc" {
 
 ```hcl
 module "gitlab_oidc" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
 
   oidc = {
     url            = "https://gitlab.com"
@@ -245,14 +245,14 @@ module "gitlab_oidc" {
 
 ```hcl
 module "irsa_oidc" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
 
   oidc = {
-    url            = module.eks.oidc_issuer_url # from tf-mod-aws-eks
+    url            = module.eks.oidc_issuer_url # from terraform-aws-eks
     client_id_list = ["sts.amazonaws.com"]
   }
 }
-# Note: tf-mod-aws-eks can provision its own IRSA provider; create one here only
+# Note: terraform-aws-eks can provision its own IRSA provider; create one here only
 # when you manage the OIDC trust anchor separately from the cluster lifecycle.
 ```
 </details>
@@ -262,7 +262,7 @@ module "irsa_oidc" {
 
 ```hcl
 module "custom_oidc" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
 
   oidc = {
     url             = "https://oidc.internal.casey.example.com"
@@ -280,7 +280,7 @@ module "custom_oidc" {
 
 ```hcl
 module "multi_aud_oidc" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
 
   oidc = {
     url            = "https://token.actions.githubusercontent.com"
@@ -295,7 +295,7 @@ module "multi_aud_oidc" {
 
 ```hcl
 module "okta_saml" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
 
   saml = {
     name                   = "corp-okta"
@@ -311,7 +311,7 @@ module "okta_saml" {
 
 ```hcl
 module "federation" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
 
   oidc = {
     url            = "https://token.actions.githubusercontent.com"
@@ -327,11 +327,11 @@ module "federation" {
 </details>
 
 <details>
-<summary><strong>9 · Wire OIDC into a federated role (<code>tf-mod-aws-iam-role</code>)</strong></summary>
+<summary><strong>9 · Wire OIDC into a federated role (<code>terraform-aws-iam-role</code>)</strong></summary>
 
 ```hcl
 module "github_oidc" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
   oidc = {
     url            = "https://token.actions.githubusercontent.com"
     client_id_list = ["sts.amazonaws.com"]
@@ -339,7 +339,7 @@ module "github_oidc" {
 }
 
 module "ci_deploy_role" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-role?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-role?ref=v1.0.0"
 
   name = "casey-ci-deploy"
 
@@ -360,11 +360,11 @@ module "ci_deploy_role" {
 </details>
 
 <details>
-<summary><strong>10 · Wire SAML into an SSO role (<code>tf-mod-aws-iam-role</code>)</strong></summary>
+<summary><strong>10 · Wire SAML into an SSO role (<code>terraform-aws-iam-role</code>)</strong></summary>
 
 ```hcl
 module "okta_saml" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
   saml = {
     name                   = "corp-okta"
     saml_metadata_document = file("${path.module}/okta-metadata.xml")
@@ -372,7 +372,7 @@ module "okta_saml" {
 }
 
 module "sso_admin_role" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-role?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-role?ref=v1.0.0"
 
   name = "casey-sso-admin"
 
@@ -401,7 +401,7 @@ provider "aws" {
 }
 
 module "tagged_oidc" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
 
   oidc = {
     url            = "https://token.actions.githubusercontent.com"
@@ -422,7 +422,7 @@ module "tagged_oidc" {
 
 ```hcl
 module "federation" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
 
   tags = { Owner = "platform" } # module-level baseline
 
@@ -446,7 +446,7 @@ module "federation" {
 
 ```hcl
 module "okta_saml" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
   saml = {
     name                   = "corp-okta"
     saml_metadata_document = file("${path.module}/okta-metadata.xml")
@@ -465,7 +465,7 @@ output "saml_metadata_expires" {
 ```hcl
 # 1) Trust anchor — OIDC provider (this module)
 module "github_oidc" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-identity-provider?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-identity-provider?ref=v1.0.0"
   oidc = {
     url            = "https://token.actions.githubusercontent.com"
     client_id_list = ["sts.amazonaws.com"]
@@ -475,14 +475,14 @@ module "github_oidc" {
 
 # 2) Least-privilege deploy permissions
 module "deploy_policy" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-policy?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-policy?ref=v1.0.0"
   name   = "casey-ci-deploy"
   policy = data.aws_iam_policy_document.deploy.json
 }
 
 # 3) Role the pipeline assumes via web identity — no static keys anywhere
 module "ci_deploy_role" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-iam-role?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-iam-role?ref=v1.0.0"
 
   name                = "casey-ci-deploy"
   managed_policy_arns = [module.deploy_policy.arn]
@@ -550,7 +550,7 @@ Validations enforce: at least one of `oidc`/`saml`; `oidc.url` begins with `http
 - **Thumbprint drift / rotation:** for major IdPs AWS validates against its trusted CA library, so an omitted `thumbprint_list` is the recommended default. If you pin thumbprints for a custom IdP and it rotates its CA certificate, `plan` will show drift — rotate the pinned value deliberately and re-apply; `iam:UpdateOpenIDConnectProviderThumbprint` is applied in place (not force-new).
 - **`tags` ↔ `tags_all` ↔ `default_tags`:** `var.tags` is applied to each provider; per-provider `oidc.tags` / `saml.tags` merge on top (winning on key conflict); `tags_all` is the provider-computed merge of resource tags over provider `default_tags`, with **resource tags winning**. `default_tags` is configured in the caller's provider block — **never** inside this module.
 - **Eventual consistency:** a freshly created provider may not be immediately usable by STS. A role that assumes via web identity / SAML created in the same apply can transiently fail until IAM propagation completes — this is expected, not a module defect.
-- **Destroy ordering:** delete trusting roles (in `tf-mod-aws-iam-role`) before the provider, or roles will have a dangling `Principal.Federated` ARN. The provider itself has no dependent sub-resources to sequence.
+- **Destroy ordering:** delete trusting roles (in `terraform-aws-iam-role`) before the provider, or roles will have a dangling `Principal.Federated` ARN. The provider itself has no dependent sub-resources to sequence.
 - **us-east-1 globals:** N/A. IAM is region-less; this module never needs a region-pinned provider alias.
 
 ---
@@ -573,7 +573,7 @@ Secure-by-default posture and every opt-out, explicitly:
 Other principles:
 - **One composite, two sibling primitives.** OIDC and SAML are account-level federation siblings; each is independently optional via its own object. The OIDC provider is the keystone (`id`/`arn` surface it).
 - **`for_each` guards, never `count`.** Each provider materializes via a `for_each` over a one-or-zero map, so toggling one provider never churns the other.
-- **Role trust is out of scope.** Federated roles live in `tf-mod-aws-iam-role` and reference this module's ARN — keeping the federation primitive decoupled from the roles that consume it.
+- **Role trust is out of scope.** Federated roles live in `terraform-aws-iam-role` and reference this module's ARN — keeping the federation primitive decoupled from the roles that consume it.
 - **Primary outputs `id` + `arn`**, plus the SAML ARN, full attributes, and `tags_all`.
 
 ---
@@ -598,7 +598,7 @@ terraform fmt -check
 - `terraform init -backend=false && terraform validate` — schema + reference integrity.
 - `terraform fmt -check` — canonical formatting.
 - `terraform plan` against a sandbox account to confirm the provider(s) and tags materialize as expected.
-- Assert `module.<name>.arn` (OIDC) and/or `saml_provider_arn` and `tags_all` in your root-module test harness, then wire the ARN into a `tf-mod-aws-iam-role` trust policy and confirm a test `sts:AssumeRoleWithWebIdentity` / `WithSAML` succeeds.
+- Assert `module.<name>.arn` (OIDC) and/or `saml_provider_arn` and `tags_all` in your root-module test harness, then wire the ARN into a `terraform-aws-iam-role` trust policy and confirm a test `sts:AssumeRoleWithWebIdentity` / `WithSAML` succeeds.
 
 ---
 
@@ -641,7 +641,7 @@ tags_all = { "Environment" = "prod", "ManagedBy" = "terraform", "Owner" = "platf
 - [Configuring OpenID Connect in GitHub Actions / AWS](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)
 - [IAM and AWS STS quotas](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html)
 - Terraform: [`aws_iam_openid_connect_provider`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_openid_connect_provider) · [`aws_iam_saml_provider`](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_saml_provider)
-- Sibling modules: `tf-mod-aws-iam-role`, `tf-mod-aws-iam-policy`, `tf-mod-aws-iam-identity-center`, `tf-mod-aws-eks`
+- Sibling modules: `terraform-aws-iam-role`, `terraform-aws-iam-policy`, `terraform-aws-iam-identity-center`, `terraform-aws-eks`
 - Module internals: `SCOPE.md`
 
 ---
